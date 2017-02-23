@@ -16,7 +16,7 @@
 #include <cstddef>
 #include <type_traits>
 
-#include <Vc/version.h>
+#include <Vc/global.h>
 
 #if Vc_IS_VERSION_1
 
@@ -144,8 +144,9 @@ namespace hpx { namespace traits
     {};
 }}
 
-#endif  // Vc_IS_VERSION_1
+#endif // Vc_IS_VERSION_1
 
-#endif
+#endif // HPX_HAVE_DATAPAR_VC
+
 #endif
 
