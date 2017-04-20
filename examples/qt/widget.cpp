@@ -3,14 +3,13 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#include <hpx/config.hpp>
-#include <hpx/apply.hpp>
+// #include <hpx/config.hpp>
 
 #include <cstddef>
 #include <functional>
-#include <mutex>
 
 #include "widget.hpp"
+#include "qhpx.hpp"
 
 #include <QtGui/QLabel>
 #include <QtGui/QHBoxLayout>
@@ -19,11 +18,27 @@
 #include <QtGui/QPushButton>
 #include <QtGui/QListWidget>
 
-widget::widget(std::function<void(widget *, std::size_t)> callback, QWidget *parent)
+
+widget::widget(QWidget *parent)
     : QDialog(parent)
+    , qhpx(nullptr)
     , no_threads(50)
-    , callback_(callback)
+    , list(nullptr)
+    , run_button(nullptr)
+    , init_hpx_button(nullptr)
+    , stop_hpx_button(nullptr)
 {
+    QHBoxLayout * init_layout = new QHBoxLayout;
+
+    init_hpx_button = new QPushButton("Init HPX");
+    stop_hpx_button = new QPushButton("Stop HPX");
+
+    QObject::connect(init_hpx_button, SIGNAL(clicked()), this, SLOT(init_hpx_clicked()));
+    QObject::connect(stop_hpx_button, SIGNAL(clicked()), this, SLOT(stop_hpx_clicked()));
+
+    init_layout->addWidget(init_hpx_button);
+    init_layout->addWidget(stop_hpx_button);
+
     QHBoxLayout * layout = new QHBoxLayout;
 
     QSpinBox * thread_number_widget = new QSpinBox;
@@ -40,17 +55,26 @@ widget::widget(std::function<void(widget *, std::size_t)> callback, QWidget *par
     layout->addWidget(run_button);
 
     QVBoxLayout * main_layout = new QVBoxLayout;
+    main_layout->addLayout(init_layout);
     main_layout->addLayout(layout);
 
     list = new QListWidget;
     main_layout->addWidget(list);
 
     setLayout(main_layout);
+
+    qhpx = QHpx::self();
+
+    connect(qhpx, SIGNAL(runFinished()), this, SLOT(runFinishedSlot()));
+    connect(qhpx, SIGNAL(runThreadFinished(std::size_t, double)), this, SLOT(add_label(std::size_t, double)));
+}
+
+widget::~widget()
+{
 }
 
 void widget::add_label(std::size_t i, double t)
 {
-    std::lock_guard<hpx::lcos::local::spinlock> l(mutex);
     QString txt("Thread ");
     txt.append(QString::number(i))
        .append(" finished in ")
@@ -59,11 +83,9 @@ void widget::add_label(std::size_t i, double t)
     list->addItem(txt);
 }
 
-void widget::run_finished()
+void widget::runFinishedSlot()
 {
-  bool value = true;
-  QGenericArgument arg("bool",&value);
-  QMetaObject::invokeMethod(run_button, "setEnabled", arg);
+    run_button->setEnabled(true);
 }
 
 void widget::set_threads(int no)
@@ -75,5 +97,15 @@ void widget::run_clicked(bool)
 {
     run_button->setEnabled(false);
     list->clear();
-    hpx::apply(callback_, this, no_threads);
+    qhpx->run(no_threads);
+}
+
+void widget::init_hpx_clicked()
+{
+    qhpx->start();
+}
+
+void widget::stop_hpx_clicked()
+{
+    qhpx->stop();
 }

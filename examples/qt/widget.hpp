@@ -5,12 +5,8 @@
 
 #include <QtGui/QDialog>
 
-#ifndef Q_MOC_RUN
-#include <hpx/include/threads.hpp>
-#include <hpx/lcos/local/spinlock.hpp>
-#include <cstddef>
-#include <functional>
-#endif
+
+class QHpx;
 
 class QWidget;
 class QListWidget;
@@ -22,22 +18,24 @@ class widget
     Q_OBJECT
 
     public:
-        widget(std::function<void(widget *, std::size_t)> callback,
-            QWidget *parent = nullptr);
+        widget(QWidget *parent = nullptr);
+        ~widget();
 
-        void add_label(std::size_t i, double t);
-
-        void run_finished();
 
     public slots:
+        void add_label(std::size_t i, double t);
+        void runFinishedSlot();
         void set_threads(int no);
 
         void run_clicked(bool);
+        void init_hpx_clicked();
+        void stop_hpx_clicked();
 
     private:
+        QHpx* qhpx;
         std::size_t no_threads;
-        hpx::lcos::local::spinlock mutex;
         QListWidget *list;
         QPushButton * run_button;
-        std::function<void(widget *, std::size_t)> callback_;
+        QPushButton * init_hpx_button;
+        QPushButton * stop_hpx_button;
 };
